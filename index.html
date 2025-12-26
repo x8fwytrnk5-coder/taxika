@@ -2,440 +2,286 @@
 <html lang="sk">
 <head>
 <meta charset="UTF-8">
-<title>Taxi – profesionálny režim jazdy + náklady + cenník</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taxi Meter – Kompletná verzia</title>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
 <style>
     body {
-        font-family: Arial, sans-serif;
         margin: 0;
         padding: 0;
-        box-sizing: border-box;
+        display: flex;
         height: 100vh;
-        display: flex;
-        flex-direction: column;
-        background: #111;
-        color: #eee;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
     }
 
-    #app {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
+    /* Mapa vľavo */
+    #map {
+        flex: 2;
+        height: 100%;
+        width: 100%;
     }
 
-    #topPanel {
-        padding: 12px 15px 8px 15px;
-        flex: 0 0 auto;
-        background: #181818;
-        border-bottom: 1px solid #333;
-    }
-
-    h1 {
-        margin: 0 0 8px 0;
-        font-size: 20px;
-    }
-
-    label {
-        font-size: 13px;
-    }
-
-    .row {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .col {
-        flex: 1 1 200px;
-    }
-
-    .suggestions {
-        background: #222;
-        padding: 4px;
-        margin-bottom: 6px;
-        font-size: 12px;
-        max-height: 90px;
+    /* Pravý panel */
+    #rightPanel {
+        flex: 1;
+        background: #f4f4f4;
+        padding: 15px;
         overflow-y: auto;
-        border: 1px solid #333;
+        border-left: 2px solid #ccc;
     }
 
-    #result {
-        margin-top: 6px;
-        font-size: 13px;
+    h2 {
+        margin-top: 0;
     }
 
     input {
         width: 100%;
-        padding: 6px;
-        margin-bottom: 2px;
-        box-sizing: border-box;
-        border-radius: 3px;
-        border: 1px solid #444;
-        background: #111;
-        color: #eee;
-        font-size: 13px;
+        padding: 8px;
+        margin: 6px 0;
+        font-size: 16px;
     }
 
     button {
-        margin-top: 6px;
-        padding: 8px 14px;
-        font-size: 14px;
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        background: #0078ff;
+        color: white;
         border: none;
-        border-radius: 3px;
+        border-radius: 4px;
+    }
+
+    #resetBtn {
+        background: #444;
+        margin-top: 5px;
+    }
+
+    /* Výsledky */
+    #result {
+        margin-top: 15px;
+        padding: 10px;
+        background: #fff;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+
+    /* Warning box */
+    #warningBox {
+        display: none;
+        padding: 10px;
+        margin-top: 10px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+
+    /* Debug panel */
+    #debugPanel {
+        margin-top: 15px;
+        padding: 10px;
+        background: #222;
+        color: #0f0;
+        height: 200px;
+        overflow-y: auto;
+        font-size: 12px;
+        border-radius: 4px;
+    }
+
+    /* Autocomplete boxy */
+    .sugBox {
+        background: white;
+        border: 1px solid #ccc;
+        max-height: 120px;
+        overflow-y: auto;
+        margin-top: -5px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+    }
+
+    .sugItem {
+        padding: 6px;
         cursor: pointer;
     }
 
-    #calcBtn {
-        background: #2b7cff;
-        color: #fff;
-    }
-
-    #calcBtn:hover {
-        background: #1d5fd1;
-    }
-
-    /* VAROVACÍ BOX NAD MAPOU */
-    #warningBox {
-        display: none;
-        padding: 12px;
-        font-size: 16px;
-        font-weight: bold;
-        text-align: center;
-        border-bottom: 2px solid #333;
-    }
-
-    /* TAXAMETER PANEL */
-    #meterPanel {
-        margin-top: 8px;
-        padding: 8px;
-        background: #101010;
-        border-radius: 4px;
-        border: 1px solid #333;
-    }
-
-    #meterGrid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-    }
-
-    .meterBox {
-        background: #000;
-        border-radius: 4px;
-        padding: 8px;
-        text-align: center;
-        border: 1px solid #333;
-    }
-
-    .meterLabel {
-        font-size: 11px;
-        text-transform: uppercase;
-        color: #aaa;
-        margin-bottom: 4px;
-    }
-
-    .meterValue {
-        font-size: 20px;
-        font-weight: bold;
-        color: #00ff7f;
-    }
-
-    .meterUnit {
-        font-size: 11px;
-        color: #888;
-    }
-
-    #meterButtons {
-        margin-top: 8px;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    #startRideBtn {
-        background: #00a83b;
-        color: #fff;
-        flex: 1 1 90px;
-    }
-
-    #pauseRideBtn {
-        background: #e5a100;
-        color: #000;
-        flex: 1 1 90px;
-    }
-
-    #stopRideBtn {
-        background: #c70039;
-        color: #fff;
-        flex: 1 1 90px;
-    }
-
-    #meterStatus {
-        margin-top: 4px;
-        font-size: 11px;
-        color: #ccc;
-    }
-
-    /* MAPA + DEBUG */
-    #mapAndDebug {
-        display: flex;
-        flex-direction: column;
-        flex: 1 1 auto;
-        min-height: 0;
-    }
-
-    #map {
-        width: 100%;
-        flex: 1 1 auto;
-        min-height: 0;
-        border-top: 1px solid #333;
-        border-bottom: 1px solid #333;
-    }
-
-    #debugPanel {
-        background: #000;
-        color: #0f0;
-        padding: 6px 8px;
-        flex: 0 0 130px;
-        overflow-y: auto;
-        border-top: 1px solid #333;
-        font-size: 11px;
+    .sugItem:hover {
+        background: #eee;
     }
 </style>
-
-<!-- LEAFLET -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 </head>
+
 <body>
 
-<div id="app">
+<div id="map"></div>
 
-    <!-- VAROVACÍ BOX NAD MAPOU -->
+<div id="rightPanel">
+    <h2>TAXAMETER PL</h2>
+
+    <label>Štart:</label>
+    <input id="startInput" placeholder="Zadajte adresu">
+    <div id="startSug" class="sugBox"></div>
+
+    <label>Zastávka (voliteľné):</label>
+    <input id="stopInput" placeholder="Zadajte adresu">
+    <div id="stopSug" class="sugBox"></div>
+
+    <label>Cieľ:</label>
+    <input id="endInput" placeholder="Zadajte adresu">
+    <div id="endSug" class="sugBox"></div>
+
+    <label>Cenník:</label>
+    <input id="cennikInput" Zadajte cenu podľa cenníka ">
+	
+    <button id="calcBtn">Vypočítať trasu</button>
+    <button id="resetBtn">Nová trasa</button>
+
     <div id="warningBox"></div>
+    <div id="result"></div>
 
-    <div id="topPanel">
-        <h1>Taxi – profesionálny režim jazdy</h1>
-
-        <div class="row">
-            <div class="col">
-                <label>Začiatočná adresa:</label><br>
-                <input type="text" id="startInput" placeholder="Zadajte adresu">
-                <div id="startSug" class="suggestions"></div>
-            </div>
-
-            <div class="col">
-                <label>Cieľ:</label><br>
-                <input type="text" id="endInput" placeholder="Zadajte adresu cieľa">
-                <div id="endSug" class="suggestions"></div>
-            </div>
-
-            <div class="col">
-                <label>Zastávka (voliteľné):</label><br>
-                <input type="text" id="stopInput" placeholder="Zadajte adresu zastávky">
-                <div id="stopSug" class="suggestions"></div>
-            </div>
-        </div>
-
-        <!-- NOVÉ POLE: CENA PODĽA CENNÍKA -->
-        <label>Cena podľa cenníka (€):</label>
-        <input type="number" id="cennikInput" placeholder="Zadajte cenu podľa cenníka">
-
-        <button id="calcBtn">Vypočítať trasu a porovnať náklady</button>
-
-        <div id="result"></div>
-
-        <!-- TAXAMETER PANEL -->
-        <div id="meterPanel">
-            <div id="meterGrid">
-                <div class="meterBox">
-                    <div class="meterLabel">Čas jazdy</div>
-                    <div class="meterValue" id="timeDisplay">00:00:00</div>
-                    <div class="meterUnit">hh:mm:ss</div>
-                </div>
-                <div class="meterBox">
-                    <div class="meterLabel">Kilometre (LIVE)</div>
-                    <div class="meterValue" id="kmDisplay">0.00</div>
-                    <div class="meterUnit">km</div>
-                </div>
-                <div class="meterBox">
-                    <div class="meterLabel">Cena (LIVE)</div>
-                    <div class="meterValue" id="priceDisplay">0.00</div>
-                    <div class="meterUnit">€</div>
-                </div>
-            </div>
-
-            <div id="meterButtons">
-                <button id="startRideBtn">ŠTART</button>
-                <button id="pauseRideBtn">PAUZA</button>
-                <button id="stopRideBtn">STOP</button>
-            </div>
-
-            <div id="meterStatus">Stav: pripravené</div>
-        </div>
-    </div>
-
-    <div id="mapAndDebug">
-        <div id="map"></div>
-        <div id="debugPanel"></div>
-    </div>
+    <h3>Debug panel</h3>
+    <div id="debugPanel"></div>
+	<div style="margin-top:20px; font-size:12px; color:#666; text-align:center;">
+    Autor aplikácie: <b>Peter Lukáč (c) 2025 Všetky práva vyhradené</b>
 </div>
+
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 // =====================
 // DEBUG PANEL
 // =====================
 function debug(msg) {
-    const p = document.getElementById("debugPanel");
-    p.innerHTML += msg + "<br>";
-    p.scrollTop = p.scrollHeight;
-    console.log(msg);
+    const box = document.getElementById("debugPanel");
+    const time = new Date().toLocaleTimeString();
+    box.innerHTML += "[" + time + "] " + msg + "<br>";
+    box.scrollTop = box.scrollHeight;
 }
 
 // =====================
-// IKONY (SVG)
+// GLOBÁLNE PREMENNÉ
 // =====================
-const iconDriver = L.icon({
-    iconUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='12' fill='blue'/></svg>",
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-});
+let map;
+let driverPosition = null;
 
-const iconStart = L.icon({
-    iconUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='12' fill='green'/></svg>",
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-});
+let routeLineMain = null;
+let routeLineApproach = null;
 
-const iconStop = L.icon({
-    iconUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='12' fill='orange'/></svg>",
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-});
-
-const iconEnd = L.icon({
-    iconUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='12' fill='red'/></svg>",
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-});
-
-// =====================
-// MAPA
-// =====================
-let map = L.map("map").setView([48.7363, 19.1462], 13);
-
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19
-}).addTo(map);
-
-// pre istotu po načítaní zrevidovať veľkosť
-setTimeout(() => {
-    map.invalidateSize();
-    debug("Map invalidateSize() called");
-}, 500);
-
-// MARKERY A LAYER PRE TRASY
-let driverMarker = null;
 let startMarker = null;
 let stopMarker = null;
 let endMarker = null;
-let routeLineMain = null;     // hlavná trasa (zelená)
-let routeLineApproach = null; // dojazd vodiča (žltá)
-
-// posledná známá GPS pozícia vodiča
-let driverPosition = null;
 
 // =====================
-// AUTOCOMPLETE – NOMINATIM
+// INICIALIZÁCIA MAPY
 // =====================
-async function fetchSuggestions(query) {
+window.addEventListener("load", () => {
+    map = L.map("map").setView([48.7363, 19.1462], 13);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19
+    }).addTo(map);
+
+    setTimeout(() => {
+        map.invalidateSize();
+        debug("Mapa inicializovaná.");
+    }, 300);
+});
+
+// =====================
+// GPS – POLOHA VODIČA
+// =====================
+if ("geolocation" in navigator) {
+    navigator.geolocation.watchPosition(
+        pos => {
+            driverPosition = [pos.coords.latitude, pos.coords.longitude];
+            debug("GPS aktualizácia: " + driverPosition.join(", "));
+        },
+        err => {
+            debug("GPS chyba: " + err.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
+    );
+} else {
+    debug("GPS nie je podporované.");
+}
+
+// =====================
+// AUTOCOMPLETE – Nominatim
+// =====================
+async function autocomplete(query) {
     if (!query || query.length < 3) return [];
 
     const url =
         "https://nominatim.openstreetmap.org/search?format=json&q=" +
-        encodeURIComponent(query) +
-        "&addressdetails=1&limit=5";
+        encodeURIComponent(query);
 
     try {
-        const res = await fetch(url);
-        if (!res.ok) {
-            debug("Autocomplete HTTP error: " + res.status);
-            return [];
-        }
-        const data = await res.json();
-        debug("Autocomplete results: " + data.length);
-        return data;
+        const r = await fetch(url);
+        return await r.json();
     } catch (e) {
-        debug("Chyba autocomplete: " + e);
+        debug("Autocomplete chyba: " + e);
         return [];
     }
 }
 
-function showSuggestions(list, container) {
-    container.innerHTML = "";
-    list.forEach(item => {
-        const div = document.createElement("div");
-        div.textContent = item.display_name;
-        div.style.cursor = "pointer";
-        div.onclick = () => {
-            container.previousElementSibling.value = item.display_name;
-            container.innerHTML = "";
-        };
-        container.appendChild(div);
+function attachAutocomplete(inputId, sugId) {
+    const input = document.getElementById(inputId);
+    const sug = document.getElementById(sugId);
+
+    input.addEventListener("input", async () => {
+        const q = input.value.trim();
+        const list = await autocomplete(q);
+
+        sug.innerHTML = "";
+
+        list.forEach(item => {
+            const div = document.createElement("div");
+            div.className = "sugItem";
+            div.textContent = item.display_name;
+            div.onclick = () => {
+                input.value = item.display_name;
+                sug.innerHTML = "";
+            };
+            sug.appendChild(div);
+        });
     });
 }
 
-document.getElementById("startInput").addEventListener("input", async e => {
-    const data = await fetchSuggestions(e.target.value);
-    showSuggestions(data, document.getElementById("startSug"));
-});
-
-document.getElementById("endInput").addEventListener("input", async e => {
-    const data = await fetchSuggestions(e.target.value);
-    showSuggestions(data, document.getElementById("endSug"));
-});
-
-document.getElementById("stopInput").addEventListener("input", async e => {
-    const data = await fetchSuggestions(e.target.value);
-    showSuggestions(data, document.getElementById("stopSug"));
-});
+attachAutocomplete("startInput", "startSug");
+attachAutocomplete("stopInput", "stopSug");
+attachAutocomplete("endInput", "endSug");
 
 // =====================
-// GEOKÓDOVANIE – NOMINATIM
+// GEOCODING
 // =====================
-async function geocode(address) {
+async function geocode(addr) {
     const url =
-        "https://nominatim.openstreetmap.org/search?format=json&q=" +
-        encodeURIComponent(address) +
-        "&limit=1";
+        "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" +
+        encodeURIComponent(addr);
 
     try {
-        const res = await fetch(url);
-        if (!res.ok) {
-            debug("Geocode HTTP error: " + res.status);
-            return null;
-        }
-        const data = await res.json();
-        if (data.length === 0) {
-            debug("Geocode: žiadny výsledok pre " + address);
-            return null;
-        }
-        debug("Geocode OK: " + data[0].display_name);
+        const r = await fetch(url);
+        const j = await r.json();
+        if (j.length === 0) return null;
+
         return {
-            lat: parseFloat(data[0].lat),
-            lon: parseFloat(data[0].lon)
+            lat: parseFloat(j[0].lat),
+            lon: parseFloat(j[0].lon)
         };
     } catch (e) {
-        debug("Chyba geocode: " + e);
+        debug("Geocode chyba: " + e);
         return null;
     }
 }
 
 // =====================
-// ROUTING – OSRM (pomocná funkcia)
+// FETCH ROUTE – OSRM
 // =====================
 async function fetchRoute(points) {
-    // points = pole objektov {lat, lon}
     const coords = points.map(p => `${p.lon},${p.lat}`).join(";");
 
     const url =
@@ -444,58 +290,24 @@ async function fetchRoute(points) {
         "?overview=full&geometries=geojson";
 
     try {
-        const res = await fetch(url);
-        if (!res.ok) {
-            debug("OSRM HTTP error: " + res.status);
-            return null;
-        }
-        const data = await res.json();
-        if (!data.routes || data.routes.length === 0) {
-            debug("OSRM: žiadne trasy");
-            return null;
-        }
-        debug("OSRM OK, vzdialenosť: " + data.routes[0].distance + " m");
-        return data.routes[0];
+        const r = await fetch(url);
+        const j = await r.json();
+
+        if (!j.routes || j.routes.length === 0) return null;
+
+        return {
+            km: j.routes[0].distance / 1000,
+            geometry: j.routes[0].geometry
+        };
     } catch (e) {
-        debug("Chyba OSRM: " + e);
+        debug("Route chyba: " + e);
         return null;
     }
 }
-
+</script>
+<script>
 // =====================
-// GPS – sledovanie vodiča (globálne)
-// =====================
-function startGlobalGPS() {
-    if (!navigator.geolocation) {
-        debug("GPS nie je dostupné v prehliadači.");
-        return;
-    }
-
-    navigator.geolocation.watchPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        driverPosition = { lat, lon };
-
-        if (!driverMarker) {
-            driverMarker = L.marker([lat, lon], { icon: iconDriver }).addTo(map);
-        } else {
-            driverMarker.setLatLng([lat, lon]);
-        }
-
-        debug("GPS update: " + lat.toFixed(5) + ", " + lon.toFixed(5));
-    }, err => {
-        debug("GPS error: " + err.message);
-    }, {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 10000
-    });
-}
-
-// spustiť globálne GPS sledovanie hneď po načítaní
-startGlobalGPS();
-// =====================
-// KONŠTANTY – NÁKLADY
+// CENNÍK
 // =====================
 const COST_PER_KM = 0.31;
 
@@ -519,6 +331,34 @@ function hideWarning() {
     box.style.display = "none";
     box.textContent = "";
 }
+
+// =====================
+// RESET UI – NOVÁ TRASA
+// =====================
+function resetUI() {
+    document.getElementById("startInput").value = "";
+    document.getElementById("stopInput").value = "";
+    document.getElementById("endInput").value = "";
+    document.getElementById("cennikInput").value = "";
+
+    document.getElementById("startSug").innerHTML = "";
+    document.getElementById("stopSug").innerHTML = "";
+    document.getElementById("endSug").innerHTML = "";
+
+    document.getElementById("result").innerHTML = "";
+    hideWarning();
+
+    if (routeLineMain) { map.removeLayer(routeLineMain); routeLineMain = null; }
+    if (routeLineApproach) { map.removeLayer(routeLineApproach); routeLineApproach = null; }
+
+    if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+    if (stopMarker) { map.removeLayer(stopMarker); stopMarker = null; }
+    if (endMarker) { map.removeLayer(endMarker); endMarker = null; }
+
+    debug("UI resetované – pripravené na novú trasu.");
+}
+
+document.getElementById("resetBtn").onclick = resetUI;
 
 // =====================
 // HLAVNÝ VÝPOČET TRASY + DOJAZDU
@@ -562,225 +402,94 @@ document.getElementById("calcBtn").onclick = async () => {
     if (driverPosition) {
         debug("Mám GPS pozíciu vodiča, rátam dojazd...");
         const routeApproach = await fetchRoute([
-            driverPosition,
+            { lat: driverPosition[0], lon: driverPosition[1] },
             pStart
         ]);
 
         if (routeApproach) {
-            approachKm = routeApproach.distance / 1000;
+            approachKm = routeApproach.km;
+            approachInfoText = `Dojazd vodiča: ${approachKm.toFixed(2)} km`;
 
-            // vykreslenie žltej trasy dojazdu
             if (routeLineApproach) map.removeLayer(routeLineApproach);
             routeLineApproach = L.geoJSON(routeApproach.geometry, {
-                style: {
-                    color: "#ffff00",
-                    weight: 4
-                }
+                style: { color: "yellow", weight: 5 }
             }).addTo(map);
-
-            approachInfoText =
-                `<b>Dojazd vodiča:</b> ${approachKm.toFixed(2)} km<br>`;
-            debug("Dojazd vodiča (km): " + approachKm.toFixed(3));
-        } else {
-            approachInfoText =
-                `<b>Dojazd vodiča:</b> nepodarilo sa vypočítať (OSRM chyba)<br>`;
-            debug("Dojazd vodiča sa nepodarilo vypočítať.");
         }
     } else {
-        approachInfoText =
-            `<b>Dojazd vodiča:</b> GPS nebola k dispozícii – dojazd nezarátaný<br>`;
-        debug("GPS pozícia vodiča nie je k dispozícii – dojazd sa neráta.");
+        debug("GPS pozícia vodiča nie je dostupná.");
     }
 
-    // 4) Výpočet HLAVNEJ TRASY (štart -> zastávka? -> cieľ)
-    debug("Požadujem hlavnú trasu štart -> cieľ...");
+    // 4) Výpočet hlavnej trasy
+    debug("Rátam hlavnú trasu...");
     const routeMain = await fetchRoute(mainPoints);
+
     if (!routeMain) {
-        alert("Nepodarilo sa vypočítať hlavnú trasu.");
+        alert("Nepodarilo sa vypočítať trasu.");
         return;
     }
 
-    const mainKm = routeMain.distance / 1000;
-    debug("Hlavná trasa (km): " + mainKm.toFixed(3));
+    const mainKm = routeMain.km;
 
-    // 5) Vykreslenie hlavnej trasy (zelená čiara)
     if (routeLineMain) map.removeLayer(routeLineMain);
     routeLineMain = L.geoJSON(routeMain.geometry, {
-        style: {
-            color: "#00ff00",
-            weight: 4
-        }
+        style: { color: "green", weight: 5 }
     }).addTo(map);
 
-    // 6) Markery (štart, zastávka, cieľ)
+    // 5) Markery
     if (startMarker) map.removeLayer(startMarker);
-    startMarker = L.marker([pStart.lat, pStart.lon], { icon: iconStart }).addTo(map);
-
     if (stopMarker) map.removeLayer(stopMarker);
-    if (pStop) {
-        stopMarker = L.marker([pStop.lat, pStop.lon], { icon: iconStop }).addTo(map);
-    }
-
     if (endMarker) map.removeLayer(endMarker);
-    endMarker = L.marker([pEnd.lat, pEnd.lon], { icon: iconEnd }).addTo(map);
 
-    // 7) Fit bounds: hlavná trasa + dojazd (ak existuje)
-    let bounds = routeLineMain.getBounds();
-    if (routeLineApproach) {
-        bounds = bounds.extend(routeLineApproach.getBounds());
-    }
-    map.fitBounds(bounds);
+    startMarker = L.marker([pStart.lat, pStart.lon]).addTo(map);
+    if (pStop) stopMarker = L.marker([pStop.lat, pStop.lon]).addTo(map);
+    endMarker = L.marker([pEnd.lat, pEnd.lon]).addTo(map);
 
-    // 8) Celková vzdialenosť a náklady
-    const totalKm = mainKm + approachKm;
-    const totalCost = calcCost(totalKm);
+    // 6) Výpočet ceny podľa tvojho vzorca (EKONOMICKÁ REALITA)
+const costApproach = approachKm * 0.40;   // vodič -> štart
+const costMain = mainKm * 0.85;           // jazda so zákazníkom
+const realCost = costApproach + costMain;
 
-    debug("Celková vzdialenosť (km): " + totalKm.toFixed(3));
-    debug("Celkové náklady (€): " + totalCost.toFixed(2));
+// 6b) Cena podľa vodiča (KONEČNÁ SUMA, NIE €/km)
+const driverCost = cennik;  // vodič zadá hotovú cenu jazdy
 
-    let html = "";
-    html += approachInfoText;
-    html += `<b>Hlavná trasa:</b> ${mainKm.toFixed(2)} km<br>`;
-    html += `<b>Celková vzdialenosť (dojazd + trasa):</b> ${totalKm.toFixed(2)} km<br>`;
-    html += `<b>Náklady (${COST_PER_KM.toFixed(2)} €/km):</b> ${totalCost.toFixed(2)} €<br>`;
-
-    // 9) Porovnanie s cenníkom + stratové upozornenie
+// 6c) Porovnanie
+let lossWarning = "";
+if (driverCost < realCost) {
+    lossWarning = "Pozor: Táto jazda je stratová podľa ekonomického výpočtu!";
+    showWarning(lossWarning);
+} else {
     hideWarning();
-    if (!isNaN(cennik)) {
-        html += `<b>Cena podľa cenníka:</b> ${cennik.toFixed(2)} €<br>`;
-
-        if (cennik < totalCost) {
-            html += `<span style="color:#ff4444;font-weight:bold;">Upozornenie: jazda je stratová!</span>`;
-            showWarning("POZOR: Jazda je stratová podľa nákladov (vrátane dojazdu)!");
-            debug("Jazda je stratová – cenník < náklady.");
-        } else {
-            debug("Jazda nie je stratová – cenník >= náklady.");
-        }
-    }
-
-    document.getElementById("result").innerHTML = html;
-};
-
-// =====================
-// TAXAMETER – LIVE MERANIE JAZDY
-// =====================
-let rideActive = false;
-let ridePaused = false;
-let rideStartTime = null;
-let rideTimer = null;
-
-let lastPosRide = null;
-let liveKm = 0;
-let livePrice = 0;
-let rideWatchId = null;
-
-function updateTimer() {
-    if (!rideActive || ridePaused) return;
-
-    const now = Date.now();
-    const diff = now - rideStartTime;
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-
-    document.getElementById("timeDisplay").textContent =
-        `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
 
-function startGPSRide() {
-    if (!navigator.geolocation) {
-        debug("GPS (taxameter) nie je dostupné.");
-        return;
+// Debug výpisy
+debug("Hlavná trasa: " + mainKm.toFixed(2) + " km");
+debug("Dojazd: " + approachKm.toFixed(2) + " km");
+debug("Reálna cena (vzorec): " + realCost.toFixed(2) + " €");
+debug("Cena podľa cenníka (konečná): " + driverCost.toFixed(2) + " €");
+debug("Rozdiel: " + (driverCost - realCost).toFixed(2) + " €");
+
+// 7) Výstup
+let html = `
+    <b>Hlavná trasa:</b> ${mainKm.toFixed(2)} km<br>
+    <b>Dojazd vodiča:</b> ${approachKm.toFixed(2)} km<br><br>
+
+    <b>Reálna cena podľa vzorca:</b> ${realCost.toFixed(2)} €<br>
+    <b>Cena podľa cenníka (konečná):</b> ${driverCost.toFixed(2)} €<br><br>
+
+    <b><u>Rozdiel:</u></b> ${(driverCost - realCost).toFixed(2)} €<br>
+`;
+
+document.getElementById("result").innerHTML = html;
+
+
+
+    // 8) Varovanie pri nerentabilite
+    if (approachKm > mainKm) {
+        showWarning("Pozor: Dojazd je dlhší ako samotná jazda!");
+    } else {
+        hideWarning();
     }
-
-    if (rideWatchId !== null) {
-        // už beží
-        return;
-    }
-
-    rideWatchId = navigator.geolocation.watchPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-
-        // Pre istotu aktualizuj aj globálnu pozíciu vodiča
-        driverPosition = { lat, lon };
-
-        // Presun markeru vodiča
-        if (!driverMarker) {
-            driverMarker = L.marker([lat, lon], { icon: iconDriver }).addTo(map);
-        } else {
-            driverMarker.setLatLng([lat, lon]);
-        }
-
-        if (rideActive && !ridePaused) {
-            if (lastPosRide) {
-                const d = map.distance(lastPosRide, [lat, lon]) / 1000;
-                liveKm += d;
-                livePrice = calcCost(liveKm);
-
-                document.getElementById("kmDisplay").textContent = liveKm.toFixed(2);
-                document.getElementById("priceDisplay").textContent = livePrice.toFixed(2);
-            }
-            lastPosRide = [lat, lon];
-        }
-    }, err => {
-        debug("GPS (taxameter) error: " + err.message);
-    }, {
-        enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 10000
-    });
-}
-
-// ŠTART JAZDY
-document.getElementById("startRideBtn").onclick = () => {
-    rideActive = true;
-    ridePaused = false;
-    rideStartTime = Date.now();
-    lastPosRide = null;
-    liveKm = 0;
-    livePrice = 0;
-
-    document.getElementById("timeDisplay").textContent = "00:00:00";
-    document.getElementById("kmDisplay").textContent = "0.00";
-    document.getElementById("priceDisplay").textContent = "0.00";
-
-    document.getElementById("meterStatus").textContent = "Stav: jazda prebieha";
-
-    if (!rideTimer) rideTimer = setInterval(updateTimer, 1000);
-
-    startGPSRide();
-    debug("Taxameter: ŠTART");
-};
-
-// PAUZA / POKRAČOVANIE
-document.getElementById("pauseRideBtn").onclick = () => {
-    if (!rideActive) return;
-    ridePaused = !ridePaused;
-
-    document.getElementById("meterStatus").textContent =
-        ridePaused ? "Stav: pauza" : "Stav: jazda pokračuje";
-
-    debug("Taxameter: " + (ridePaused ? "PAUZA" : "POKRAČOVANIE"));
-};
-
-// STOP JAZDY
-document.getElementById("stopRideBtn").onclick = () => {
-    rideActive = false;
-    ridePaused = false;
-
-    document.getElementById("meterStatus").textContent = "Stav: ukončené";
-
-    lastPosRide = null;
-
-    if (rideWatchId !== null) {
-        navigator.geolocation.clearWatch(rideWatchId);
-        rideWatchId = null;
-    }
-
-    debug("Taxameter: STOP");
 };
 </script>
-
 </body>
 </html>
