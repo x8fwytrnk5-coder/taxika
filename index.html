@@ -3,19 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <title>Najbližšie nemocnice</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    #results { margin-top: 20px; }
-    .hospital { padding: 10px; border-bottom: 1px solid #ccc; }
+    body { font-family: Arial, sans-serif; margin: 0; }
+    #map { height: 80vh; }
+    #info { padding: 10px; }
+    .hospital { margin-bottom: 10px; }
   </style>
 </head>
 <body>
-  <h1>Vyhľadanie najbližších nemocníc</h1>
-  <button onclick="findHospitals()">Nájsť nemocnice</button>
-  <div id="results"></div>
+  <h2 style="padding:10px;">Vyhľadanie najbližších nemocníc</h2>
+  <div id="map"></div>
+  <div id="info"></div>
 
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    async function findHospitals() {
+    let map, userMarker;
+
+    async function init() {
       if (!navigator.geolocation) {
         alert("Geolokácia nie je podporovaná.");
         return;
@@ -25,7 +30,15 @@
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
 
-        // Overpass API dotaz: nemocnice v okruhu 5 km
+        // Inicializácia mapy
+        map = L.map('map').setView([lat, lon], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        userMarker = L.marker([lat, lon]).addTo(map).bindPopup("Moja poloha").openPopup();
+
+        // Overpass dotaz
         const query = `
           [out:json];
           (
@@ -35,39 +48,52 @@
           );
           out center;
         `;
-
         const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+        const response = await fetch(url);
+        const data = await response.json();
 
-        try {
-          const response = await fetch(url);
-          const data = await response.json();
+        const infoDiv = document.getElementById("info");
+        infoDiv.innerHTML = "<h3>Nájdené nemocnice:</h3>";
 
-          const resultsDiv = document.getElementById("results");
-          resultsDiv.innerHTML = "";
+        data.elements.forEach(el => {
+          const name = el.tags?.name || "Neznáma nemocnica";
+          const phone = el.tags?.phone || "Tel. nedostupné";
+          const addr = el.tags?.["addr:street"] || "";
+          const city = el.tags?.["addr:city"] || "";
+          const coords = el.lat ? [el.lat, el.lon] : [el.center.lat, el.center.lon];
 
-          if (data.elements.length === 0) {
-            resultsDiv.innerHTML = "<p>Žiadne nemocnice v okolí.</p>";
-            return;
-          }
+          // Marker na mape
+          const marker = L.marker(coords).addTo(map);
+          marker.bindPopup(`<b>${name}</b><br>${addr} ${city}<br>${phone}`);
 
-          data.elements.forEach(el => {
-            const name = el.tags && el.tags.name ? el.tags.name : "Neznáma nemocnica";
-            const addr = el.tags && el.tags["addr:street"] ? el.tags["addr:street"] : "";
-            const city = el.tags && el.tags["addr:city"] ? el.tags["addr:city"] : "";
-            const info = `${name} ${addr} ${city}`.trim();
-
-            const div = document.createElement("div");
-            div.className = "hospital";
-            div.innerHTML = `<strong>${name}</strong><br>
-                             ${addr} ${city}<br>
-                             GPS: ${el.lat || el.center.lat}, ${el.lon || el.center.lon}`;
-            resultsDiv.appendChild(div);
-          });
-        } catch (err) {
-          alert("Chyba pri načítaní dát: " + err);
-        }
+          // Info panel
+          const div = document.createElement("div");
+          div.className = "hospital";
+          div.innerHTML = `
+            <strong>${name}</strong><br>
+            ${addr} ${city}<br>
+            Tel: ${phone}<br>
+            <button onclick="routeTo(${coords[0]},${coords[1]})">Ukázať trasu</button>
+          `;
+          infoDiv.appendChild(div);
+        });
       });
     }
+
+    async function routeTo(lat, lon) {
+      if (!userMarker) return;
+      const userPos = userMarker.getLatLng();
+      const url = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${lon},${lat}?overview=full&geometries=geojson`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+      const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+
+      L.polyline(coords, {color: 'blue'}).addTo(map);
+      map.fitBounds(L.polyline(coords).getBounds());
+    }
+
+    init();
   </script>
 </body>
 </html>
